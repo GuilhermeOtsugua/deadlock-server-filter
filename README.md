@@ -1,6 +1,21 @@
-# deadlock-relay-filter
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-light.svg">
+    <img src="assets/logo-dark.svg" width="480" alt="Deadlock Server Filter">
+  </picture>
+</p>
 
-A Windows PowerShell script that blocks Deadlock's outbound UDP traffic to known South American Steam relays. It uses Windows Firewall and exits; there is no background service. Blocking relays changes the available routes, not necessarily the match server.
+<p align="center">
+  <img src="https://img.shields.io/badge/platform-Windows-0078D4" alt="Platform: Windows">
+  <img src="https://img.shields.io/badge/PowerShell-5.1%2B-245780" alt="PowerShell 5.1+">
+  <img src="https://img.shields.io/badge/filter-Windows_Firewall-0f766e" alt="Filter: Windows Firewall">
+</p>
+
+# Deadlock Server Filter
+
+Block known South American Steam relays for Deadlock without running a background process. The script adds outbound UDP rules for `deadlock.exe` and exits. This changes the routes Deadlock can use; it does not guarantee a US match server.
+
+## Usage
 
 ```powershell
 .\DeadlockRelay.ps1 Preview  # List endpoints without making changes
