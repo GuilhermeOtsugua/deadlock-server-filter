@@ -1,6 +1,6 @@
 # Offline smoke tests; mock every network/firewall operation. No elevation required.
 $ErrorActionPreference = 'Stop'
-$entry = Join-Path $PSScriptRoot '..\DeadlockRelay.ps1'
+$entry = Join-Path $PSScriptRoot '..\DeadlockRelayFilter.ps1'
 $temp = New-Item -ItemType Directory -Path (Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid()))
 $game = (New-Item (Join-Path $temp.FullName 'deadlock.exe')).FullName
 $db = @{}; $offline = $false; $fail = ''; $failRemove = ''

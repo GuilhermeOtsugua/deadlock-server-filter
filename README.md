@@ -13,55 +13,79 @@
 
 # Deadlock Server Filter
 
-Also known (more accurately) as **Deadlock Relay Filter**.
+Deadlock doesn’t currently have a server picker for public matchmaking, so I made this. Also known (more accurately) as **Deadlock Relay Filter**.
 
-Block Steam relays in the regions you choose, for `deadlock.exe` only. This changes the routes available to the game, not necessarily the match server. It can increase latency or prevent a connection; apply changes before queueing, not during a match.
+Block Steam relays by region for `deadlock.exe` only. When relay availability determines placement, this does not guarantee a *particular* match server, but lets you consistently match in remaining regions of your choice.
 
-## Usage
+## How it works
 
-### Block South America
+1. **You choose which regions to block.** For example, if you pick South America, the script looks up the addresses Valve lists for Deadlock in that region.
+2. **Windows applies the block.** The script adds firewall rules that stop Deadlock from sending game traffic to those addresses. Other games and apps can still use them.
+3. **Deadlock can still connect through the remaining regions.** The filter changes which connections are available; Valve still chooses the match server. The script exits, and the rules stay in place until you change or remove them.
 
-Open Windows PowerShell in the repo folder. `List` and `Preview` are read-only:
+## Quick start
 
-```powershell
-.\DeadlockRelay.ps1 List
-.\DeadlockRelay.ps1 Preview -Region SA
-```
-
-**Duration:** The script exits immediately after applying the rules. The rules survive closing PowerShell and restarting Windows. They do not refresh automatically: run `On` again to update them, or `Off` to remove them. From an **administrator PowerShell** in the same folder:
+Open PowerShell in the folder containing the script. To see which South American relays would be blocked, run:
 
 ```powershell
-.\DeadlockRelay.ps1 On -Region SA
-.\DeadlockRelay.ps1 Off              # Undo, even offline
+.\DeadlockRelayFilter.ps1 preview -Region SA
 ```
 
-### Choose regions
-
-`-Region` means **block**, not “play in.” `List` shows the currently advertised cities under each code: `SA` South America, `NA` North America, `EU` Europe, `AS` Asia excluding the Middle East, `ME` Middle East, `AF` Africa, `OC` Oceania. These are local groupings, not matchmaking regions. Unmapped locations are listed but never selected.
+The preview shows the game executable, relay addresses, and UDP ports without changing the firewall. To see all available region codes and cities:
 
 ```powershell
-.\DeadlockRelay.ps1 On -Region SA,EU  # Block both
-.\DeadlockRelay.ps1 On -Region SA     # Replace the selection: EU is no longer blocked
+.\DeadlockRelayFilter.ps1 list
 ```
 
-For a non-default Steam library, add `-GamePath 'D:\SteamLibrary\steamapps\common\Deadlock\game\bin\win64\deadlock.exe'` to `Preview` or `On`.
+### Apply, change, or undo a block
 
-### Optional shortcut
+For `on` and `off`, open PowerShell **as administrator** in the same folder.
 
-From the repo folder, define a shortcut in the shell you intend to use:
+**Block South America:**
 
 ```powershell
-Set-Alias drf (Resolve-Path .\DeadlockRelay.ps1).Path
-drf preview -Region SA
+.\DeadlockRelayFilter.ps1 on -Region SA
 ```
 
-`drf` accepts the same commands, does not elevate privileges, and disappears when the shell closes. **The rules do not.** Without the alias, use the full `Off` command above.
+**Block South America and Europe:** Each selection replaces the previous one. To unblock Europe later, run the South America example again.
 
-### Verify for yourself
+```powershell
+.\DeadlockRelayFilter.ps1 on -Region SA,EU
+```
 
-Read [the PowerShell firewall configuration script](DeadlockRelay.ps1). It reads [Valve's advertised relays for Deadlock](https://api.steampowered.com/ISteamApps/GetSDRConfig/v1/?appid=1422450), selects endpoint addresses and UDP ports, and uses `New-NetFirewallRule` and `Remove-NetFirewallRule` to manage its own outbound rules. It does not modify game files, read process memory, or install a background service.
+**Remove all of this tool’s blocks:** This works offline.
 
-`Preview` shows the **proposed** rules. To check what Windows actually has configured, run this read-only query after `On`; after `Off` it should return no rows. It includes rules from the original South America-only version:
+```powershell
+.\DeadlockRelayFilter.ps1 off
+```
+
+The script exits after applying the rules. The block survives closing PowerShell and restarting Windows. Run `on` again with your regions to refresh the endpoints, or `off` to undo.
+
+## Options
+
+- **`-Region`** — The regions to **block**, not the regions you want to play in. Required for `preview` and `on`. Use one code (`SA`) or a comma-separated list (`SA,EU`).
+- **`-GamePath`** — Use this option if you installed Deadlock in a different Steam library. For example:
+
+  ```powershell
+  .\DeadlockRelayFilter.ps1 preview -Region SA -GamePath 'D:\SteamLibrary\steamapps\common\Deadlock\game\bin\win64\deadlock.exe'
+  ```
+
+| Code | Relay region |
+| --- | --- |
+| `SA` | South America |
+| `NA` | North America |
+| `EU` | Europe |
+| `AS` | Asia, excluding the Middle East |
+| `ME` | Middle East |
+| `AF` | Africa |
+| `OC` | Oceania |
+
+These are the tool’s geographic groupings, not matchmaking regions. Unmapped locations are reported and left unblocked. Filtering can increase latency or prevent a connection; avoid changing rules during a match.
+
+## Verify for yourself
+
+- **Inspect the implementation:** [DeadlockRelayFilter.ps1](DeadlockRelayFilter.ps1) reads [Valve’s relay list for Deadlock](https://api.steampowered.com/ISteamApps/GetSDRConfig/v1/?appid=1422450) and manages outbound UDP rules in Windows Firewall. It does not modify game files, read process memory, or install a background service.
+- **Inspect the result:** `preview` shows the proposed rules. The read-only query below shows the rules actually configured in Windows. After `off`, it should return no rows.
 
 ```powershell
 Get-NetFirewallRule -PolicyStore PersistentStore |
@@ -69,6 +93,6 @@ Get-NetFirewallRule -PolicyStore PersistentStore |
     Select-Object DisplayName, Enabled, Direction, Action
 ```
 
-## Distribution
+## License
 
-PowerShell is the current implementation. A future standalone version in Rust or another language could simplify distribution; it is not required for in-game performance.
+Deadlock Server Filter is licensed under the [GNU Affero General Public License v3.0 only](LICENSE) (`AGPL-3.0-only`).
