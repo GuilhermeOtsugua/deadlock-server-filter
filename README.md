@@ -13,17 +13,61 @@
 
 # Deadlock Server Filter
 
-Block known South American Steam relays for Deadlock without running a background process. The script adds outbound UDP rules for `deadlock.exe` and exits. This changes the routes Deadlock can use; it does not guarantee a US match server.
+Also known (more accurately) as **Deadlock Relay Filter**.
+
+Block Steam relays in the regions you choose, for `deadlock.exe` only. This changes the routes available to the game, not necessarily the match server. It can increase latency or prevent a connection; apply changes before queueing, not during a match.
 
 ## Usage
 
+### Block South America
+
+Open Windows PowerShell in the repo folder. `List` and `Preview` are read-only:
+
 ```powershell
-.\DeadlockRelay.ps1 Preview  # List endpoints without making changes
-.\DeadlockRelay.ps1 On       # Administrator: apply or refresh rules before queueing
-.\DeadlockRelay.ps1 Off      # Administrator: remove managed rules, even offline
+.\DeadlockRelay.ps1 List
+.\DeadlockRelay.ps1 Preview -Region SA
 ```
 
-Preview and On fetch Valve's relay list for app 1422450 and select the advertised endpoints for São Paulo, Buenos Aires, Santiago, and Lima. For a non-default Steam library, pass `-GamePath` with the full path to `deadlock.exe`.
+**Duration:** The script exits immediately after applying the rules. The rules survive closing PowerShell and restarting Windows. They do not refresh automatically: run `On` again to update them, or `Off` to remove them. From an **administrator PowerShell** in the same folder:
+
+```powershell
+.\DeadlockRelay.ps1 On -Region SA
+.\DeadlockRelay.ps1 Off              # Undo, even offline
+```
+
+### Choose regions
+
+`-Region` means **block**, not “play in.” `List` shows the currently advertised cities under each code: `SA` South America, `NA` North America, `EU` Europe, `AS` Asia excluding the Middle East, `ME` Middle East, `AF` Africa, `OC` Oceania. These are local groupings, not matchmaking regions. Unmapped locations are listed but never selected.
+
+```powershell
+.\DeadlockRelay.ps1 On -Region SA,EU  # Block both
+.\DeadlockRelay.ps1 On -Region SA     # Replace the selection: EU is no longer blocked
+```
+
+For a non-default Steam library, add `-GamePath 'D:\SteamLibrary\steamapps\common\Deadlock\game\bin\win64\deadlock.exe'` to `Preview` or `On`.
+
+### Optional shortcut
+
+From the repo folder, define a shortcut in the shell you intend to use:
+
+```powershell
+Set-Alias drf (Resolve-Path .\DeadlockRelay.ps1).Path
+drf preview -Region SA
+```
+
+`drf` accepts the same commands, does not elevate privileges, and disappears when the shell closes. **The rules do not.** Without the alias, use the full `Off` command above.
+
+### Verify for yourself
+
+Read [the PowerShell firewall configuration script](DeadlockRelay.ps1). It reads [Valve's advertised relays for Deadlock](https://api.steampowered.com/ISteamApps/GetSDRConfig/v1/?appid=1422450), selects endpoint addresses and UDP ports, and uses `New-NetFirewallRule` and `Remove-NetFirewallRule` to manage its own outbound rules. It does not modify game files, read process memory, or install a background service.
+
+`Preview` shows the **proposed** rules. To check what Windows actually has configured, run this read-only query after `On`; after `Off` it should return no rows. It includes rules from the original South America-only version:
+
+```powershell
+Get-NetFirewallRule -PolicyStore PersistentStore |
+    Where-Object Group -in 'DeadlockRelay-1422450-v2','DeadlockRelay-SA-1422450-v1' |
+    Select-Object DisplayName, Enabled, Direction, Action
+```
 
 ## Distribution
 
